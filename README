@@ -1,0 +1,11 @@
+### Parser zur Generierung einer Terminübersicht
+
+**input**: Exportierte .csv vom DFN-Terminplaner
+**output**: Übersichtstabelle als PDF
+
+**Ausführung**: 
+
+python -m venv .venv --> erstes Mal
+source .venv/bin/activate --> bei jedem Neustart des Terminals
+pip install -r script/requirements.txt
+python3 script/generate_schedule.py -n ANZAHL_DER_SZENARIOS_PRO_PERSON -fn "dateiname.csv"
