@@ -26,6 +26,11 @@ OUTPUT_FILE = ROOT_DIR / "output" / "terminuebersicht.pdf"
 REQUIRED_COLUMNS = {"Startdatum", "Von", "Name", "E-Mail", "Status"}
 
 
+def ensure_directories() -> None:
+    INPUT_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+
 @dataclass(frozen=True)
 class Appointment:
     date: date
@@ -133,18 +138,23 @@ def create_pdf(appointments: list[Appointment], target_visits: int, output_file:
         ),
     )
 
-    appointments_by_date: dict[date, list[tuple[Appointment, int]]] = defaultdict(list)
+    appointments_by_date: dict[date, list[tuple[Appointment, int, str]]] = defaultdict(list)
     participant_counts: list[int] = []
     for participant_index, (email_key, participant_appointments) in enumerate(
         ordered_participants
     ):
+        participant_id = f"P{participant_index + 1:03d}"
         ordered_appointments = sorted(
             participant_appointments, key=lambda appointment: (appointment.date, appointment.time)
         )
         participant_counts.append(len(ordered_appointments))
         for visit_index, appointment in enumerate(ordered_appointments):
             appointments_by_date[appointment.date].append(
-                (appointment, latin_square_scenario(participant_index, visit_index))
+                (
+                    appointment,
+                    latin_square_scenario(participant_index, visit_index),
+                    participant_id,
+                )
             )
 
     styles = getSampleStyleSheet()
@@ -182,21 +192,22 @@ def create_pdf(appointments: list[Appointment], target_visits: int, output_file:
             )
         )
 
-    column_widths = [75, 58, 160, 340, 75]
+    column_widths = [75, 58, 155, 310, 75, 75]
     for appointment_date in sorted(appointments_by_date):
         story.append(Paragraph(appointment_date.strftime("%d.%m.%Y"), styles["Heading2"]))
-        rows = [["Datum", "Uhrzeit", "Name", "E-mail", "Szenario"]]
+        rows = [["Datum", "Uhrzeit", "Name", "E-mail", "Personen-ID", "Szenario"]]
         day_appointments = sorted(
             appointments_by_date[appointment_date],
             key=lambda item: (item[0].time, item[0].name.casefold()),
         )
-        for appointment, scenario in day_appointments:
+        for appointment, scenario, participant_id in day_appointments:
             rows.append(
                 [
                     Paragraph(appointment.date.strftime("%d.%m.%Y"), cell_style),
                     Paragraph(escape(appointment.time), centered_cell_style),
                     Paragraph(escape(appointment.name), cell_style),
                     Paragraph(escape(appointment.email), cell_style),
+                    Paragraph(participant_id, centered_cell_style),
                     Paragraph(str(scenario), centered_cell_style),
                 ]
             )
@@ -258,6 +269,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        ensure_directories()
         csv_path = find_csv(INPUT_DIR, args.filename)
         appointments = load_confirmed_appointments(csv_path)
         create_pdf(appointments, args.n, OUTPUT_FILE)
