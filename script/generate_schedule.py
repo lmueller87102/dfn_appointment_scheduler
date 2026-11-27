@@ -38,6 +38,21 @@ class Appointment:
     name: str
     email: str
 
+def get_available_filepath(requested_filepath: Path) -> Path:
+    
+    curr_date = date.today().strftime("%d%m%Y")
+    
+    filepath_w_date = requested_filepath.with_stem("_".join([requested_filepath.stem, curr_date]))
+    
+    if not filepath_w_date.exists():
+        return filepath_w_date
+    
+    counter = 1
+    while True:
+        candidate = requested_filepath.with_name(f"{requested_filepath.stem}_{curr_date}_{counter}{requested_filepath.suffix}")
+        if not candidate.exists():
+            return candidate
+        counter += 1
 
 def positive_integer(value: str) -> int:
     try:
@@ -233,8 +248,9 @@ def create_pdf(appointments: list[Appointment], target_visits: int, output_file:
         story.append(table)
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
+    file_path = get_available_filepath(output_file)
     document = SimpleDocTemplate(
-        str(output_file),
+        str(file_path),
         pagesize=landscape(A4),
         leftMargin=14 * mm,
         rightMargin=14 * mm,
